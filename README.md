@@ -2,4 +2,4 @@
 
 # Branches for given parts
 
-- Part 1 - https://github.com/szymon-szym/opensearch-rust-lambda/tree/01-local-setup
+- Part 1 - https://github.com/szymon-szym/opensearch-rust-lambda/tree/1-local-setup
