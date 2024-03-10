@@ -1,3 +1,9 @@
 {
-    "limit": 5
+    "destinationCityName": "London",
+    "maxAvgTicketPrice": 600,
+    "minAvgTicketPrice": 400,
+    "pagination": {
+        "limit": 1,
+        "offset": 10
+    }
 }

@@ -1,12 +1,25 @@
 use lambda_runtime::{run, service_fn, tracing, Error, LambdaEvent};
 
-use opensearch_service::{self, OpenSearchService};
+use opensearch_service::{self, OpenSearchService, OpenSearchQueryBuilder};
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Deserialize, Clone, Copy)]
+struct Pagination {
+    limit: Option<i64>,
+    offset: Option<i64>,
+}
+
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Request {
-    limit: i64,
+    destination_city_name: Option<String>,
+    origin_city_name: Option<String>,
+    destination_weather: Option<String>,
+    origin_weather: Option<String>,
+    max_avg_ticket_price: Option<f64>,
+    min_avg_ticket_price: Option<f64>,
+    pagination: Option<Pagination>,
 }
 
 #[derive(Serialize)]
@@ -16,14 +29,27 @@ struct Response {
 
 async fn function_handler(os_client: &OpenSearchService, event: LambdaEvent<Request>) -> Result<Response, Error> {
 
-    let limit = event.payload.limit;
+    let request_body = event.payload;
 
     let index = "opensearch_dashboards_sample_data_flights";
 
-    let result = os_client.query_all_docs::<FlightData>(index, limit).await?;
+    let limit = request_body.pagination.and_then(|p| p.limit).unwrap_or(10);
+
+    let offset = request_body.pagination.and_then(|p| p.offset).unwrap_or(0);
+
+    let dummy_query = OpenSearchQueryBuilder::new()
+        .with_must_match("OriginWeather", request_body.origin_weather.unwrap_or("".to_string()))
+        .with_must_match("DestWeather", request_body.destination_weather.unwrap_or("".to_string()))
+        .with_must_match("DestCityName", request_body.destination_city_name.unwrap_or("".to_string()))
+        .with_must_match("OriginCityName", request_body.origin_city_name.unwrap_or("".to_string()))
+        .with_must_range("AvgTicketPrice", request_body.min_avg_ticket_price, request_body.max_avg_ticket_price)
+        .build();
+
+    let query_result = os_client.query::<FlightData>(index, limit, offset, dummy_query).await?;
+
     // Prepare the response
     let resp = Response {
-        flights: result,
+        flights: query_result,
     };
 
     Ok(resp)
